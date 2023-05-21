@@ -263,7 +263,7 @@ const new_content = async (
         .update({
           note: msg_content,
         })
-        .match({ id: latest_message_data.id });
+        .eq("id", latest_message_data.id);
 
       if (update_message_error) {
         return "Sorry, something went wrong. Try sending the item again. :(";
