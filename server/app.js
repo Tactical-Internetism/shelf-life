@@ -58,7 +58,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
   }
 
   //console.log(sender_data[0].id)
-  console.log(fridge_data)
+  //console.log(fridge_data)
 
   const { data:edge_data, error:edge_error } = await supabase
     .from("senderfridgeedges")
@@ -71,17 +71,17 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
     twiml.message("Sorry, something went wrong. Try sending your message again.");
     res.type('text/xml').send(twiml.toString());
   }
-  console.log(edge_data)
+  //console.log(edge_data)
 
   let message_str
   // determine what sender is trying to do
   if (req.body.Body.includes("JOIN")) {
     message_str = await join(fridge_data, sender_data, edge_data, req.body, supabase)
-  } else if (req.body.Body.includes("My name is ")) {
+  } else if (req.body.Body.toLowerCase().includes("my name is ")) {
     //name
-    message_str = set_name(fridge_data, sender_data, req.body, supabase)
-  } else if (req.body.Body.includes("STOP")) {
-    message_str = unsubscribe(fridge_data, sender_data, req.body, supabase)
+    message_str = await set_name(fridge_data, sender_data, edge_data, req.body, supabase)
+  } else if (req.body.Body.includes("LEAVE")) {
+    message_str = await unsubscribe(fridge_data, sender_data, edge_data, req.body, supabase)
   } else {
     //deal with url or note
     message_str = new_content(fridge_data, sender_data, req.body, supabase);
@@ -100,7 +100,7 @@ const record_exists = (supabase_fetch_result) => {
 
 const join = async (fridge_data, sender_data, edge_data, body, supabase) => {
   if (record_exists(edge_data)) {
-    return `Looks like you've already joined ${fridge_data[0].fridge_name}.\nIf you'd like to update your name you can say, \"My name is..\"\n\nIf you'd like to stop receiving messages from this fridge, you can say, \"STOP\".`
+    return `Looks like you've already joined ${fridge_data[0].fridge_name}.\nIf you'd like to update your name you can say, \"My name is..\"\n\nIf you'd like to stop receiving messages from this fridge, you can say, "LEAVE".`
   } else {
     const {data, error } = await supabase
       .from("senderfridgeedges")
@@ -113,27 +113,49 @@ const join = async (fridge_data, sender_data, edge_data, body, supabase) => {
       console.log(error)
       return `Sorry, something went wrong joining ${fridge_data[0].fridge_name}. Try again later.`
     }
-    return `Welcome to Postcard! You just joined ${fridge_data[0].fridge_name}. You can send urls to this number and they will show up as postcards on this fridge.\nIf you'd like to set a name for yourself on this fridge, you can say, \"My name is...\"\n\nIf you'd like to leave this fridge, you can say, \"STOP\".`
+    return `Welcome to Postcard! You just joined ${fridge_data[0].fridge_name}. You can send urls to this number and they will show up as postcards on this fridge.\nIf you'd like to set a name for yourself on this fridge, you can say, \"My name is...\"\n\nIf you'd like to leave this fridge, you can say, "LEAVE".`
   }
 }
 
-const set_name = async (fridge_data, sender_data, body, supabase) => {
-  if (sender_data) {
-    let name = body.Body.split("My name is ")[1]
-    const { error } = await supabase.from("senderfridgeedges").update({
-      sender_name: name
-    })
-    .eq('id', edge_id)
-
-    if (message_error || !validUrl.isUri(link)) {
-  }
-    return "Looks like you've already joined this fridge.\nIf you'd like to update your name you can say, \"My name is..\"\n If you'd like to stop receiving messages from this fridge, you can say, \"STOP\"."
+const set_name = async (fridge_data, sender_data, edge_data, body, supabase) => {
+  if (record_exists(edge_data)) {
+    const name_start = body.Body.toLowerCase().indexOf("my name is ")
+    let name = body.Body.slice(name_start+11)
+    console.log(name)
+    const { error } = await supabase
+      .from("senderfridgeedges")
+      .update({
+        sender_name: name
+      })
+      .eq('id', edge_data[0].id)
+    if (error) {
+      console.log("set name error:")
+      console.log(error)
+      return `Sorry, something went wrong setting your name. Try again later.`
+    } else {
+      return `Got it! We set your name for ${fridge_data[0].fridge_name} to ${name}.`
+    }
   } else {
     return "Looks like you haven't joined this fridge yet. You can say \"JOIN\" to get started!"
   }
 }
 
-const unsubscribe = async (fridge_data, sender_data, body, supabase) => {
+const unsubscribe = async (fridge_data, sender_data, edge_data, body, supabase) => {
+  if(record_exists(edge_data)) {
+    const {data, error} = await supabase
+      .from("senderfridgeedges")
+      .delete()
+      .eq("id", edge_data[0].id)
+    if (error) {
+      console.log("set name error:")
+      console.log(error)
+      return `Sorry, something went wrong removing you from this fridge. Try again later.`
+    } else {
+      return `You've successful left ${fridge_data[0].fridge_name}. If you'd like to re-join, you can say, "JOIN".`
+    }
+  } else {
+    return `You have not joined this fridge. Say "JOIN" if you'd like to.`
+  }
 }
 
 const new_content = async (fridge_data, sender_data, body, supabase) => {
