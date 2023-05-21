@@ -11,11 +11,11 @@ import SwiftUI
 
 @main
 struct postcardApp: App {
-    @StateObject var dataManager = DataManager()
+    @StateObject private var dataManager = DataManager()
     
     var body: some Scene {
         WindowGroup {
-            ContentView().environmentObject(dataManager)
+            ContentView(thisFridge: $dataManager.thisFridge).environmentObject(dataManager)
         }
     }
 }
