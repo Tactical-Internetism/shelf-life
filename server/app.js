@@ -26,7 +26,7 @@ app.get("/", (req, res) => {
 
 app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
   console.log("message recieved");
-  console.log(req.body.Body);
+  //console.log(req.body.Body);
   const twiml = new MessagingResponse();
 
   // getting fridge data from supabase
@@ -39,7 +39,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
     console.log("fridge error:");
     console.log(fridge_error);
     twiml.message(
-      "Sorry, something went wrong. Try sending your message again."
+      "Oops, something went wrong. Try sending your message again."
     );
     res.type("text/xml").send(twiml.toString());
     return
@@ -47,7 +47,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
   if (!record_exists(fridge_data)) {
     console.log("Fridge doesn't exist");
     twiml.message(
-      "Sorry, this fridge doesn't exist. Make sure you have the right phone number."
+      "Hmmmm, this fridge doesn't exist. Make sure you have the right phone number."
     );
     res.type("text/xml").send(twiml.toString());
     return
@@ -141,7 +141,7 @@ const record_exists = (supabase_fetch_result) => {
 
 const join = async (fridge_data, sender_data, edge_data, body, supabase) => {
   if (record_exists(edge_data)) {
-    return `Looks like you've already joined ${fridge_data[0].fridge_name}.\nIf you'd like to update your name you can say, \"My name is..\"\n\nIf you'd like to stop receiving messages from this fridge, you can say, "LEAVE".`;
+    return `Looks like you've already joined ${fridge_data[0].fridge_name}.\nIf you'd like to update your name you can say, \"My name is..\"\n\nIf you'd like to stop receiving messages from this fridge, you can text LEAVE.`;
   } else {
     const { data, error } = await supabase.from("senderfridgeedges").insert({
       sender_id: sender_data[0].id,
@@ -152,7 +152,7 @@ const join = async (fridge_data, sender_data, edge_data, body, supabase) => {
       console.log(error);
       return `Sorry, something went wrong joining ${fridge_data[0].fridge_name}. Try again later.`;
     }
-    return `Welcome to Postcard! You just joined ${fridge_data[0].fridge_name}. You can send urls to this number and they will show up as postcards on this fridge.\nIf you'd like to set a name for yourself on this fridge, you can say, \"My name is...\"\n\nIf you'd like to leave this fridge, you can say, "LEAVE".`;
+    return `Welcome to shelf life! You just joined the fridge, ${fridge_data[0].fridge_name}. You can send urls for kitchen-appropriate audio (podcasts, playlists, albums, etc.) to this number and they will show up as items in this fridge.\nIf you'd like to set a name for yourself in this fridge, you can say, \"My name is...\"\n\nIf you'd like to leave this fridge, you can text LEAVE.`;
   }
 };
 
@@ -166,7 +166,6 @@ const set_name = async (
   if (record_exists(edge_data)) {
     const name_start = body.Body.toLowerCase().indexOf("my name is ");
     let name = body.Body.slice(name_start + 11);
-    console.log(name);
     const { error } = await supabase
       .from("senderfridgeedges")
       .update({
@@ -178,10 +177,10 @@ const set_name = async (
       console.log(error);
       return `Sorry, something went wrong setting your name. Try again later.`;
     } else {
-      return `Got it! We set your name for ${fridge_data[0].fridge_name} to ${name}.`;
+      return `Got it! We set your name for the fridge, ${fridge_data[0].fridge_name}, to ${name}.`;
     }
   } else {
-    return 'Looks like you haven\'t joined this fridge yet. You can say "JOIN" to get started!';
+    return `Looks like you haven't joined this fridge yet. You can text JOIN to get started!`;
   }
 };
 
@@ -202,10 +201,10 @@ const unsubscribe = async (
       console.log(error);
       return `Sorry, something went wrong removing you from this fridge. Try again later.`;
     } else {
-      return `You've successful left ${fridge_data[0].fridge_name}. If you'd like to re-join, you can say, "JOIN".`;
+      return `You've successful left ${fridge_data[0].fridge_name}. If you'd like to re-join this fridge, you can send JOIN.`;
     }
   } else {
-    return `You have not joined this fridge. Say "JOIN" if you'd like to.`;
+    return `You haven't joined this fridge yet. Message JOIN if you'd like to.`;
   }
 };
 
@@ -218,11 +217,9 @@ const new_content = async (
 ) => {
   if (!record_exists(edge_data)) {
     //sender needs to exist before sending a link or note
-    console.log("Edge doesn't exist");
+    //console.log("Edge doesn't exist");
     return (
-      "Thanks for messaging " +
-      fridge_data[0].name +
-      "! It looks like you haven't joined this fridge yet. Send JOIN to get started."
+      `Thanks for messaging ${fridge_data[0].fridge_name}! It looks like you haven't joined this fridge yet. Text JOIN to get started.`
     );
   }
 
@@ -243,9 +240,7 @@ const new_content = async (
       return "Sorry, something went wrong. Try sending the item again. Make sure you send only a link as the first message (no notes)";
     }
     return (
-      "Thanks for sending this item to " +
-      fridge_name +
-      "! If you want to add a note to this link, send it in a separate message. :) Otherwise, toodles."
+      `Thanks for sending this item to ${fridge_name}! If you want to add a note to this link, send it in a separate message. :) Otherwise, toodles.`
     );
   } else {
     //check if there was a link sent from supabase within the last 10 minutes
@@ -254,7 +249,7 @@ const new_content = async (
       .select("id, created_at")
       .eq("sender_id", sender_data[0].id)
       .eq("fridge_id", fridge_data[0].id)
-      .range("created_at", new Date(Date.now() - 10 * 60000), new Date()) //within the last ten minutes
+      .gt("created_at", new Date(Date.now() - 10 * 60000).toISOString()) //within the last ten minutes
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -263,6 +258,7 @@ const new_content = async (
       console.log(message_error)
       return "Sorry, something went wrong. Try sending the item again. :(";
     }
+
 
     //if yes, update most recent message with the note
     if (record_exists(latest_message_data)) {
@@ -289,7 +285,7 @@ const new_content = async (
 const message_updated = async (
   payload
 ) => {
-  if (payload.new.is_read_by_fridge) {
+  if (!payload.old.is_read_by_fridge) {
     console.log("message_read")
     if (payload.new.edge_id) {
       const {data:sender_data, error:sender_error} = await supabase
@@ -301,7 +297,6 @@ const message_updated = async (
         console.log(sender_error)
         return
       }
-      console.log(sender_data)
 
       const {data:fridge_data, error:fridge_error} = await supabase
         .from("fridges")
@@ -312,15 +307,10 @@ const message_updated = async (
         console.log(fridge_error)
         return
       }
-      console.log(fridge_data)
 
-      const message_body = `Someone just opened one of your items from the fridge ${fridge_data[0].fridge_name}!`
+      const message_body = `Someone just opened one of your items from the fridge, ${fridge_data[0].fridge_name}!`
       const from = "+".concat(fridge_data[0].fridge_number)
       const to = "+".concat(sender_data[0].sender_number)
-
-      console.log(message_body)
-      console.log(from)
-      console.log(to)
 
       //send message to sender
       twilio_client.messages
@@ -329,7 +319,7 @@ const message_updated = async (
            from: from,
            to: to
          })
-        .then(message => console.log(message.sid));
+        .then(message => console.log(message));
     }
   }
 }
@@ -342,7 +332,8 @@ const message_updated = async (
     {
       event: 'UPDATE',
       schema: 'public',
-      table: 'messages'
+      table: 'messages',
+      filter: 'is_read_by_fridge=eq.true'
     },
     (payload) => message_updated(payload)
   )
