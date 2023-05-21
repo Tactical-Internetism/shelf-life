@@ -1,10 +1,11 @@
+require("dotenv").config();
 const supabaseClient = require("@supabase/supabase-js");
 const bodyParser = require("body-parser");
-const twilio = require("twilio");
+const twilio = require("twilio")
+const twilio_client = require("twilio")(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const express = require("express");
 var validUrl = require("valid-url");
 
-require("dotenv").config();
 const { MessagingResponse } = require("twilio").twiml;
 
 const app = express();
@@ -14,9 +15,10 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 const supabase = supabaseClient.createClient(
-  "https://ajfdbcwkkbrqhcbuvbcj.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqZmRiY3dra2JycWhjYnV2YmNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODQ2MDcxOTIsImV4cCI6MjAwMDE4MzE5Mn0.wrxu5FPskgh00BxWlxw1oKr5Z-DVDk20t8kLtJxr_Kc"
+  process.env.SUPABASE_PROJECT_ID,
+  process.env.SUPABASE_API_KEY
 );
+
 
 app.get("/", (req, res) => {
   res.send("Hello World of Postcard!");
@@ -40,6 +42,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
       "Sorry, something went wrong. Try sending your message again."
     );
     res.type("text/xml").send(twiml.toString());
+    return
   }
   if (!record_exists(fridge_data)) {
     console.log("Fridge doesn't exist");
@@ -47,6 +50,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
       "Sorry, this fridge doesn't exist. Make sure you have the right phone number."
     );
     res.type("text/xml").send(twiml.toString());
+    return
   }
 
   // get sender data
@@ -64,6 +68,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
       "Sorry, something went wrong. Try sending your message again."
     );
     res.type("text/xml").send(twiml.toString());
+    return
   }
 
   //console.log(sender_data[0].id)
@@ -81,6 +86,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
       "Sorry, something went wrong. Try sending your message again."
     );
     res.type("text/xml").send(twiml.toString());
+    return
   }
   //console.log(edge_data)
 
@@ -246,13 +252,15 @@ const new_content = async (
     const { data: latest_message_data, error: message_error } = await supabase
       .from("messages")
       .select("id, created_at")
-      .eq("sender_id", sender_data.id)
-      .eq("fridge_id", fridge_data.id)
+      .eq("sender_id", sender_data[0].id)
+      .eq("fridge_id", fridge_data[0].id)
       .range("created_at", new Date(Date.now() - 10 * 60000), new Date()) //within the last ten minutes
       .order("created_at", { ascending: false })
       .limit(1);
 
     if (message_error) {
+      console.log("time check error")
+      console.log(message_error)
       return "Sorry, something went wrong. Try sending the item again. :(";
     }
 
@@ -263,9 +271,11 @@ const new_content = async (
         .update({
           note: msg_content,
         })
-        .eq("id", latest_message_data.id);
+        .eq("id", latest_message_data[0].id);
 
       if (update_message_error) {
+        console.log("Update message error:")
+        console.log(update_message_error)
         return "Sorry, something went wrong. Try sending the item again. :(";
       }
       return "Thanks for adding this note! Have a fridgetastic day.";
@@ -275,6 +285,68 @@ const new_content = async (
     return "Were you trying to send a link? If so, try sending it again. Otherwise, have a fridgetastic day.";
   }
 };
+
+const message_updated = async (
+  payload
+) => {
+  if (payload.new.is_read_by_fridge) {
+    console.log("message_read")
+    if (payload.new.edge_id) {
+      const {data:sender_data, error:sender_error} = await supabase
+        .from("senders")
+        .select()
+        .eq("id", payload.new.sender_id)
+      if (sender_error) {
+        console.log("sender_error")
+        console.log(sender_error)
+        return
+      }
+      console.log(sender_data)
+
+      const {data:fridge_data, error:fridge_error} = await supabase
+        .from("fridges")
+        .select()
+        .eq("id", payload.new.fridge_id)
+      if (fridge_error) {
+        console.log("fridge_error")
+        console.log(fridge_error)
+        return
+      }
+      console.log(fridge_data)
+
+      const message_body = `Someone just opened one of your items from the fridge ${fridge_data[0].fridge_name}!`
+      const from = "+".concat(fridge_data[0].fridge_number)
+      const to = "+".concat(sender_data[0].sender_number)
+
+      console.log(message_body)
+      console.log(from)
+      console.log(to)
+
+      //send message to sender
+      twilio_client.messages
+        .create({
+           body: message_body,
+           from: from,
+           to: to
+         })
+        .then(message => console.log(message.sid));
+    }
+  }
+}
+
+// listen for changes to message read column of messages table
+ const channel = supabase
+  .channel('any')
+  .on(
+    'postgres_changes',
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'messages'
+    },
+    (payload) => message_updated(payload)
+  )
+  .subscribe()
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
