@@ -19,12 +19,17 @@ app.get('/', (req, res) => {
 
 app.post('/sms', twilio.webhook({validate: false}), async (req, res) => {
   console.log("message recieved")
-  console.log(req.body.To.substring(1))
   console.log(req.body.Body)
   const twiml = new MessagingResponse();
 
-  
-  const { data:fridge_data, fridge_error } = await supabase
+  let fridge_id
+  let fridge_name
+  let sender_id
+  let link 
+  let note
+
+  // getting fridge data from supabase
+  const { data:fridge_data, error:fridge_error } = await supabase
     .from('fridges')
     .select("id", "fridge_name")
     .eq('fridge_number', req.body.To.substring(1))
@@ -32,24 +37,69 @@ app.post('/sms', twilio.webhook({validate: false}), async (req, res) => {
   if (fridge_error) {
     console.log("error:")
     console.log(fridge_error)
+    twiml.message("Sorry, something went wrong. Try sending your message again.");
+    res.type('text/xml').send(twiml.toString());
   }
-  let fridge_id
   if (fridge_data) {
     fridge_id = fridge_data.id
-    const fridge_name = fridge_data.fridge_name
+    fridge_name = fridge_data.fridge_name
   } else {
-    console.log(message_error)
-    twiml.message("Sorry, something went wrong. Try sending the item again.");
+    console.log("Fridge doesn't exist")
+    twiml.message("Sorry, this fridge doesn't exist. Make sure you have the right phone number.");
+    res.type('text/xml').send(twiml.toString());
+  }
+  
+  // determine if the sender is joining
+  if (req.body.Body.includes("JOIN")) {
+    //make/check account for sender
+    const { data:sender_data, error:sender_error } = await supabase
+      .from('senders')
+      .select("id")
+      .eq("sender_number", req.body.From.substring(1))
+    if (sender_error) {
+      console.log("error:")
+      console.log(sender_error)
+      twiml.message("Sorry, something went wrong. Try sending your message again.");
+      res.type('text/xml').send(twiml.toString());
+    }
+    if (sender_data) {
+      twiml.message("Looks like you've already joined this fridge.\nIf you'd like to update your name you can say, \"My name is..\"\n If you'd like to stop receiving messages from this fridge, you can say, \"STOP\".");
+      res.type('text/xml').send(twiml.toString());
+    } else {
+      console.log("Sender doesn't exist")
+      twiml.message("Welcome to Postcard! You just joined ${fridge_name}. You can send urls to this number and they will show up as postcards on this fridge.\nIf you'd like to set a name for yourself on this fridge, you can say, \"My name is...\"\nIf you'd like to leave this fridge, you can say, \"STOP\".");
+      res.type('text/xml').send(twiml.toString());
+    }
+  } else if (req.body.Body.includes("My name is") {{
+    //name
+  } else if req.body.Body.includes("STOP") {
+  } else {
+    //deal with url or note
+  }
+
+
+  // getting sender data drom supabase
+  const { data:sender_data, error:sender_error } = await supabase
+    .from('senders')
+    .select("id")
+    .eq("sender_number", req.body.From.substring(1))
+
+  if (sender_error) {
+    console.log("error:")
+    console.log(sender_error)
+    twiml.message("Sorry, something went wrong. Try sending your item again.");
     res.type('text/xml').send(twiml.toString());
   }
 
-  const { data: sender_data, sender_error } = await supabase
-    .from('senders')
-    .select()
+  if (sender_data) {
+    sender_id = sender_data.id
+  } else {
+    console.log("Sender doesn't exist")
+    twiml.message("Thanks for messaging ${fridge_name}! It looks like you haven't joined this fridge yet. Send JOIN to get started.");
+    res.type('text/xml').send(twiml.toString());
+  }
 
-  const link = req.body.Body
-  const note = req.body.Body
-  const sender = req.body.From
+
 
   const {message_error} = await supabase
     .from('messages')
@@ -65,7 +115,7 @@ app.post('/sms', twilio.webhook({validate: false}), async (req, res) => {
     twiml.message("Sorry, something went wrong. Try sending the item again.");
     res.type('text/xml').send(twiml.toString());
   } else {
-    twiml.message('Thanks for sending this item!');
+    twiml.message('Thanks for sending this item to ${fridge_name}!');
     res.type('text/xml').send(twiml.toString());
   }
 })
