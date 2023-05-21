@@ -27,12 +27,6 @@ app.post('/sms', twilio.webhook({validate: false}), async (req, res) => {
   console.log(req.body.Body)
   const twiml = new MessagingResponse();
 
-  let fridge_id
-  let fridge_name
-  let sender_id
-  let link 
-  let note
-
   // getting fridge data from supabase
   const { data:fridge_data, error:fridge_error } = await supabase
     .from('fridges')
@@ -54,47 +48,53 @@ app.post('/sms', twilio.webhook({validate: false}), async (req, res) => {
     res.type('text/xml').send(twiml.toString());
   }
   
-  // determine if the sender is joining
-  if (req.body.Body.includes("JOIN")) {
-    //make/check account for sender
-    const { data:sender_data, error:sender_error } = await supabase
-      .from('senders')
-      .select("id")
-      .eq("sender_number", req.body.From.substring(1))
-    if (sender_error) {
-      console.log("error:")
-      console.log(sender_error)
-      twiml.message("Sorry, something went wrong. Try sending your message again.");
-      res.type('text/xml').send(twiml.toString());
-    }
-    if (sender_data) {
-      twiml.message("Looks like you've already joined this fridge.\nIf you'd like to update your name you can say, \"My name is..\"\n If you'd like to stop receiving messages from this fridge, you can say, \"STOP\".");
-      res.type('text/xml').send(twiml.toString());
-    } else {
-      console.log("Sender doesn't exist")
-      twiml.message("Welcome to Postcard! You just joined ${fridge_name}. You can send urls to this number and they will show up as postcards on this fridge.\nIf you'd like to set a name for yourself on this fridge, you can say, \"My name is...\"\nIf you'd like to leave this fridge, you can say, \"STOP\".");
-      res.type('text/xml').send(twiml.toString());
-    }
-  } else if (req.body.Body.includes("My name is") {{
-    //name
-  } else if req.body.Body.includes("STOP") {
-  } else {
-    //deal with url or note
-  }
-
-  // getting sender data drom supabase
+  // get sender data
   const { data:sender_data, error:sender_error } = await supabase
     .from('senders')
     .select("id")
     .eq("sender_number", req.body.From.substring(1))
-
   if (sender_error) {
     console.log("error:")
     console.log(sender_error)
-    twiml.message("Sorry, something went wrong. Try sending your item again.");
+    twiml.message("Sorry, something went wrong. Try sending your message again.");
     res.type('text/xml').send(twiml.toString());
   }
 
+  let message_str
+  // determine if the sender is joining
+  if (req.body.Body.includes("JOIN")) {
+    message_str = join(fridge_data, sender_data, req.body, supabase)
+  } else if (req.body.Body.includes("My name is") {{
+    //name
+    message_str = set_name(fridge_data, sender_data, req.body, supabase)
+  } else if req.body.Body.includes("STOP") {
+    message_str = unsubscribe(fridge_data, sender_data, req.body, supabase)
+  } else {
+    //deal with url or note
+    message_str = new_content(fridge_data, sender_data, req.body, supabase)
+  }
+  twiml.message(message_str);
+  res.type('text/xml').send(twiml.toString());
+});
+
+
+function join(fridge_data, sender_data, body) {
+  if (sender_data) {
+    twiml.message("Looks like you've already joined this fridge.\nIf you'd like to update your name you can say, \"My name is..\"\n If you'd like to stop receiving messages from this fridge, you can say, \"STOP\".");
+    res.type('text/xml').send(twiml.toString());
+  } else {
+    console.log("Sender doesn't exist")
+    twiml.message("Welcome to Postcard! You just joined ${fridge_name}. You can send urls to this number and they will show up as postcards on this fridge.\nIf you'd like to set a name for yourself on this fridge, you can say, \"My name is...\"\nIf you'd like to leave this fridge, you can say, \"STOP\".");
+    res.type('text/xml').send(twiml.toString());
+  }
+}
+
+function set_name(fridge_data, sender_data, body, supabase) {
+}
+function unsubscribe(fridge_data, sender_data, body, supabase) {
+}
+
+function new_content(fridge_data, sender_data, body, supabase) {
   if (sender_data) {
     sender_id = sender_data.id
   } else {
