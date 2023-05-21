@@ -113,7 +113,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
     );
   } else {
     //deal with url or note
-    message_str = new_content(
+    message_str = await new_content(
       fridge_data,
       sender_data,
       edge_data,
