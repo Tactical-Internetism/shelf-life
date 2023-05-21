@@ -265,7 +265,7 @@ const new_content = async (
     }
 
     //if yes, update most recent message with the note
-    if (latest_message_data) {
+    if (record_exists(latest_message_data)) {
       const { update_message_data, update_message_error } = await supabase
         .from("messages")
         .update({
