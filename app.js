@@ -19,39 +19,54 @@ app.get('/', (req, res) => {
 
 app.post('/sms', twilio.webhook({validate: false}), async (req, res) => {
   console.log("message recieved")
+  console.log(req.body.To.substring(1))
   console.log(req.body.Body)
   const twiml = new MessagingResponse();
+
+  
+  const { data:fridge_data, fridge_error } = await supabase
+    .from('fridges')
+    .select("id", "fridge_name")
+    .eq('fridge_number', req.body.To.substring(1))
+
+  if (fridge_error) {
+    console.log("error:")
+    console.log(fridge_error)
+  }
+  let fridge_id
+  if (fridge_data) {
+    fridge_id = fridge_data.id
+    const fridge_name = fridge_data.fridge_name
+  } else {
+    console.log(message_error)
+    twiml.message("Sorry, something went wrong. Try sending the item again.");
+    res.type('text/xml').send(twiml.toString());
+  }
+
+  const { data: sender_data, sender_error } = await supabase
+    .from('senders')
+    .select()
 
   const link = req.body.Body
   const note = req.body.Body
   const sender = req.body.From
-  const fridge = req.body.To
-  
-  const { data, error } = await supabase
-    .from('fridges')
-    .select()
-  
-  const { data, error } = await supabase
-    .from('senders')
-    .select()
 
-
-  const {error} = await supabase
+  const {message_error} = await supabase
     .from('messages')
     .insert({
       link: link,
       note: note,
       sender_id: sender,
-      fridge_id: fridge
+      fridge_id: fridge_id
     })
 
-  if (error) {
-    console.log(error)
+  if (message_error) {
+    console.log(message_error)
     twiml.message("Sorry, something went wrong. Try sending the item again.");
     res.type('text/xml').send(twiml.toString());
   } else {
-  twiml.message('Thanks for sending this item!');
-  res.type('text/xml').send(twiml.toString());
+    twiml.message('Thanks for sending this item!');
+    res.type('text/xml').send(twiml.toString());
   }
 })
 
