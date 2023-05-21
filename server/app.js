@@ -30,7 +30,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
   // getting fridge data from supabase
   const { data: fridge_data, error: fridge_error } = await supabase
     .from("fridges")
-    .select("id", "fridge_name")
+    .select()
     .eq("fridge_number", req.body.To.substring(1));
 
   if (fridge_error) {
@@ -39,7 +39,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
     twiml.message("Sorry, something went wrong. Try sending your message again.");
     res.type('text/xml').send(twiml.toString());
   }
-  if (!fridge_data) {
+  if (!record_exists(fridge_data)) {
     console.log("Fridge doesn't exist")
     twiml.message("Sorry, this fridge doesn't exist. Make sure you have the right phone number.");
     res.type('text/xml').send(twiml.toString());
@@ -58,7 +58,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
   }
 
   //console.log(sender_data[0].id)
-  //console.log(fridge_data[0].id)
+  console.log(fridge_data)
 
   const { data:edge_data, error:edge_error } = await supabase
     .from("senderfridgeedges")
@@ -71,6 +71,7 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
     twiml.message("Sorry, something went wrong. Try sending your message again.");
     res.type('text/xml').send(twiml.toString());
   }
+  console.log(edge_data)
 
   let message_str
   // determine what sender is trying to do
@@ -90,12 +91,29 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
   res.type("text/xml").send(twiml.toString());
 });
 
+const record_exists = (supabase_fetch_result) => {
+  if (supabase_fetch_result.length > 0) {
+    return true
+  }
+  return false
+}
 
 const join = async (fridge_data, sender_data, edge_data, body, supabase) => {
-  if (edge_data) {
-    return `Looks like you've already joined this fridge.\nIf you'd like to update your name you can say, \"My name is..\"\n\nIf you'd like to stop receiving messages from this fridge, you can say, \"STOP\".`
+  if (record_exists(edge_data)) {
+    return `Looks like you've already joined ${fridge_data[0].fridge_name}.\nIf you'd like to update your name you can say, \"My name is..\"\n\nIf you'd like to stop receiving messages from this fridge, you can say, \"STOP\".`
   } else {
-    return `Welcome to Postcard! You just joined ${fridge_name}. You can send urls to this number and they will show up as postcards on this fridge.\nIf you'd like to set a name for yourself on this fridge, you can say, \"My name is...\"\nIf you'd like to leave this fridge, you can say, \"STOP\".`
+    const {data, error } = await supabase
+      .from("senderfridgeedges")
+      .insert({
+        sender_id: sender_data[0].id,
+        fridge_id: fridge_data[0].id,
+      })
+    if (error) {
+      console.log("create edge error:")
+      console.log(error)
+      return `Sorry, something went wrong joining ${fridge_data[0].fridge_name}. Try again later.`
+    }
+    return `Welcome to Postcard! You just joined ${fridge_data[0].fridge_name}. You can send urls to this number and they will show up as postcards on this fridge.\nIf you'd like to set a name for yourself on this fridge, you can say, \"My name is...\"\n\nIf you'd like to leave this fridge, you can say, \"STOP\".`
   }
 }
 
