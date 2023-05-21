@@ -1,3 +1,3 @@
-# POSTCARD
+# shelf life
 
-Just getting started :)
+an app for location-specific (fridges, in particular), crowd-sourced, shared media recomendations
