@@ -64,10 +64,10 @@ app.post('/sms', twilio.webhook({validate: false}), async (req, res) => {
   // determine if the sender is joining
   if (req.body.Body.includes("JOIN")) {
     message_str = join(fridge_data, sender_data, req.body, supabase)
-  } else if (req.body.Body.includes("My name is") {{
+  } else if (req.body.Body.includes("My name is")) {
     //name
     message_str = set_name(fridge_data, sender_data, req.body, supabase)
-  } else if req.body.Body.includes("STOP") {
+  } else if (req.body.Body.includes("STOP")) {
     message_str = unsubscribe(fridge_data, sender_data, req.body, supabase)
   } else {
     //deal with url or note
