@@ -34,7 +34,6 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
     .eq("fridge_number", req.body.To.substring(1));
 
   if (fridge_error) {
-<<<<<<< HEAD
     console.log("fridge error:")
     console.log(fridge_error)
     twiml.message("Sorry, something went wrong. Try sending your message again.");
@@ -47,7 +46,6 @@ app.post("/sms", twilio.webhook({ validate: false }), async (req, res) => {
   }
 
   // get sender data
-<<<<<<< HEAD
   const { data:sender_data, error:sender_error } = await supabase
     .from('senders')
     .upsert({"sender_number": req.body.From.substring(1)}, {onConflict:"sender_number", ignoreDuplicates:false})
