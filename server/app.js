@@ -102,35 +102,65 @@ function set_name(fridge_data, sender_data, body, supabase) {}
 function unsubscribe(fridge_data, sender_data, body, supabase) {}
 
 const new_content = async (fridge_data, sender_data, body, supabase) => {
-  if (sender_data) {
-    sender_id = sender_data.id;
-  } else {
+  if (!sender_data) {
+    //sender needs to exist before sending a link or note
     console.log("Sender doesn't exist");
-    twiml.message(
-      "Thanks for messaging ${fridge_name}! It looks like you haven't joined this fridge yet. Send JOIN to get started."
+    return (
+      "Thanks for messaging " +
+      fridge_name +
+      "! It looks like you haven't joined this fridge yet. Send JOIN to get started."
     );
-    res.type("text/xml").send(twiml.toString());
   }
 
-  link = req.body.Body.trim();
-  note = req.body.Body;
+  let fridge_name = fridge_data.fridge_name;
+  let msg_content = body.Body.trim();
 
-  const { message_error } = await supabase.from("messages").insert({
-    link: link,
-    note: note,
-    sender_id: sender,
-    fridge_id: fridge_id,
-  });
-
-  if (message_error || !validUrl.isUri(link)) {
-    console.log(message_error);
-    twiml.message(
-      "Sorry, something went wrong. Try sending the item again. Make sure you send only a link as the first message (no notes)"
+  // if the message is a link
+  if (validUrl.isUri(msg_content)) {
+    //save in supabase as new message
+    const { message_error } = await supabase.from("messages").insert({
+      link: msg_content,
+      sender_id: sender_data.id,
+      fridge_id: fridge_data.id,
+    });
+    if (message_error) {
+      console.log(message_error);
+      return "Sorry, something went wrong. Try sending the item again. Make sure you send only a link as the first message (no notes)";
+    }
+    return (
+      "Thanks for sending this item to " +
+      fridge_name +
+      "! If you want to add a note to this link, send it in a separate message. :) Otherwise, toodles."
     );
-    res.type("text/xml").send(twiml.toString());
   } else {
-    twiml.message("Thanks for sending this item to ${fridge_name}!");
-    res.type("text/xml").send(twiml.toString());
+    //check if there was a link sent from supabase within the last 10 minutes
+    const { data: latest_message_data, error: message_error } = await supabase
+      .from("messages")
+      .select("id, created_at")
+      .eq("sender_id", sender_data.id)
+      .eq("fridge_id", fridge_data.id)
+      .range("created_at", new Date(Date.now() - 10 * 60000), new Date()) //within the last ten minutes
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (message_error) {
+      return "Sorry, something went wrong. Try sending the item again. :(";
+    }
+
+    //if yes, update most recent message with the note
+    if (latest_message_data) {
+      const { update_message_data, update_message_error } = await supabase
+        .from("messages")
+        .update({
+          note: msg_content,
+        })
+        .match({ id: latest_message_data.id });
+
+      return "Thanks for adding this note! Have a fridgetastic day.";
+    }
+
+    //otherwise, ignore the note
+    return "Were you trying to send a link? If so, try sending it again. Otherwise, have a fridgetastic day.";
   }
 };
 
