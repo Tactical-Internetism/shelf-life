@@ -13,6 +13,7 @@ struct Message: Encodable, Decodable {
     let fridgeID: UUID
     let senderID: UUID
     let link: String
+    var senderName: String?
     
     var note: String
     var isReadByFridge: Bool
@@ -23,6 +24,7 @@ struct Message: Encodable, Decodable {
         case fridgeID = "fridge_id"
         case senderID = "sender_id"
         case link
+        case senderName
         
         case note
         case isReadByFridge = "is_read_by_fridge"

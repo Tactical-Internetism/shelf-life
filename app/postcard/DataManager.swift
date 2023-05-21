@@ -24,9 +24,20 @@ import Foundation
                     .from("messages")
                     .select()
                     .eq(column: "fridge_id", value: thisFridge!.id)
-                    .eq(column: "is_read_by_fridge", value: false)
+//                    .eq(column: "is_read_by_fridge", value: false)
                     .execute().value
                 print(messages)
+                for (index, _) in messages.enumerated() {
+                    let result = try await supabase.database
+                        .from("senderfridgeedges")
+                        .select(columns: "sender_name")
+                        .eq(column: "fridge_id", value: messages[index].fridgeID)
+                        .eq(column: "sender_id", value: messages[index].senderID)
+                        .execute().value as [[String: String]]
+                    if (result.count > 0) {
+                        messages[index].senderName = result[0]["sender_name"]
+                    }
+                }
             } catch {
                 print("### fetchNewMessages Error: \(error)")
             }
@@ -38,6 +49,7 @@ import Foundation
             do {
                 var updatedMessage = message
                 updatedMessage.isReadByFridge = true
+                updatedMessage.senderName = nil
                 try await supabase.database.from("messages").update(values: updatedMessage).eq(column: "id", value: message.id).execute()
             } catch {
                 print("### markMessageRead Error: \(error)")
