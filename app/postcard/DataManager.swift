@@ -13,6 +13,12 @@ import Foundation
     
     init() {
         loadThisFridge()
+        let messageChanges = supabaseRealtime.channel(.table("messages", schema: "public"))
+        messageChanges.on(.all) { message in
+            print("update")
+            self.fetchNewMessages()
+        }
+        messageChanges.subscribe()
     }
     
     func fetchNewMessages() {
@@ -51,7 +57,6 @@ import Foundation
                 updatedMessage.isReadByFridge = true
                 updatedMessage.senderName = nil
                 try await supabase.database.from("messages").update(values: updatedMessage).eq(column: "id", value: message.id).execute()
-                fetchNewMessages()
             } catch {
                 print("### markMessageRead Error: \(error)")
             }
