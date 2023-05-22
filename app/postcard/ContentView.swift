@@ -25,6 +25,7 @@ struct ContentView: View {
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
             Text("Let's login!")
+                .font(.custom("iAWriterMonoS-Regular", size: 32))
             TextField(
                 "Fridge Phone Number", text: $fridgeNumber
             )
@@ -42,6 +43,7 @@ struct ContentView: View {
                 .imageScale(.large)
                 .foregroundColor(.accentColor)
             Text("Let's name your fridge!")
+                .font(.custom("iAWriterMonoS-Regular", size: 32))
             TextField(
                 "Fridge Name", text: $fridgeName
             )
@@ -81,18 +83,32 @@ struct ContentView: View {
                     .aspectRatio(contentMode: .fit)
                 if (message.senderName != nil) {
                     Text(message.senderName!)
+                    .font(.custom("iAWriterMonoS-Bold", size: 32))
+
                 }
             }
             .frame(height: 100)
             Text(message.note)
+                .font(.custom("iAWriterMonoS-Regular", size: 12))
             WebView(url: URL(string: message.link)!)
                 .border(.black)
                 .padding()
             Button {
+                dataManager.markMessageRead(message: message)
                 currentMessage = nil
             } label: {
                 Text("Toss Out")
+                    .font(.custom("iAWriterMonoS-Regular", size: 12))
+                    .foregroundColor(.white)
+
             }
+            .padding(16)
+            .background(Color("AppGreen"))
+            .clipShape(Capsule())
+//
+//            .background(RoundedRectangle(cornerRadius: 10).stroke(Color("AppGreen"), lineWidth: 2))
+            
+
         }
     }
 
@@ -143,6 +159,9 @@ struct ContentView: View {
                 .padding()
                 .onAppear {
                     dataManager.fetchNewMessages()
+                    Timer.scheduledTimer(withTimeInterval: 5, repeats: true, block: { _ in
+                        dataManager.fetchNewMessages()
+                    })
                 }
             }
         }
@@ -205,7 +224,8 @@ struct TapeLabel: View {
     var body: some View {
         Text(text)
             .foregroundColor(Color("AppBlack"))
-            .font(.system(size: 10))
+            .font(.custom("iAWriterMonoS-Regular", size: 10))
+
 //            .padding()
     }
 }
