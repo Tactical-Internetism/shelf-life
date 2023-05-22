@@ -65,6 +65,7 @@ struct ContentView: View {
                 .border(.black)
                 .padding()
             Button {
+                dataManager.markMessageRead(message: message)
                 currentMessage = nil
             } label: {
                 Text("Toss Out")
@@ -103,6 +104,9 @@ struct ContentView: View {
                 .padding()
                 .onAppear {
                     dataManager.fetchNewMessages()
+                    Timer.scheduledTimer(withTimeInterval: 5, repeats: true, block: { _ in
+                        dataManager.fetchNewMessages()
+                    })
                 }
             }
         }

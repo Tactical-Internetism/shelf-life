@@ -13,37 +13,30 @@ import Foundation
     
     init() {
         loadThisFridge()
-        let messageChanges = supabaseRealtime.channel(.table("messages", schema: "public"))
-        messageChanges.on(.all) { message in
-            print("update")
-            self.fetchNewMessages()
-        }
-        messageChanges.subscribe()
     }
     
     func fetchNewMessages() {
         Task {
             do {
                 // Fetch all
-                print(thisFridge!.id)
-                messages = try await supabase.database
+                var temp_messages = try await supabase.database
                     .from("messages")
                     .select()
                     .eq(column: "fridge_id", value: thisFridge!.id)
-//                    .eq(column: "is_read_by_fridge", value: false)
-                    .execute().value
-                print(messages)
-                for (index, _) in messages.enumerated() {
+                    .eq(column: "is_read_by_fridge", value: false)
+                    .execute().value as [Message]
+                for (index, _) in temp_messages.enumerated() {
                     let result = try await supabase.database
                         .from("senderfridgeedges")
                         .select(columns: "sender_name")
-                        .eq(column: "fridge_id", value: messages[index].fridgeID)
-                        .eq(column: "sender_id", value: messages[index].senderID)
+                        .eq(column: "fridge_id", value: temp_messages[index].fridgeID)
+                        .eq(column: "sender_id", value: temp_messages[index].senderID)
                         .execute().value as [[String: String]]
                     if (result.count > 0) {
-                        messages[index].senderName = result[0]["sender_name"]
+                        temp_messages[index].senderName = result[0]["sender_name"]
                     }
                 }
+                messages = temp_messages
             } catch {
                 print("### fetchNewMessages Error: \(error)")
             }
@@ -57,6 +50,7 @@ import Foundation
                 updatedMessage.isReadByFridge = true
                 updatedMessage.senderName = nil
                 try await supabase.database.from("messages").update(values: updatedMessage).eq(column: "id", value: message.id).execute()
+                fetchNewMessages()
             } catch {
                 print("### markMessageRead Error: \(error)")
             }

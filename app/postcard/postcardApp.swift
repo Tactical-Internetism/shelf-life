@@ -13,10 +13,6 @@ import SwiftUI
 struct postcardApp: App {
     @StateObject private var dataManager = DataManager()
     
-    init() {
-        supabaseRealtime.connect()
-    }
-    
     var body: some Scene {
         WindowGroup {
             ContentView(thisFridge: $dataManager.thisFridge).environmentObject(dataManager)
@@ -29,5 +25,3 @@ let supabase = SupabaseClient(
     supabaseURL: Secrets.supabaseURL,
     supabaseKey: Secrets.supabaseAnonKey
 )
-
-var supabaseRealtime = RealtimeClient(endPoint: Secrets.supabaseURL.appendingPathComponent("/realtime/v1").absoluteString, params: ["apikey": Secrets.supabaseAnonKey])
