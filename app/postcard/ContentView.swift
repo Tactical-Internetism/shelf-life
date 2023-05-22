@@ -14,10 +14,10 @@ struct ContentView: View {
     @State private var fridgeNumber: String = ""
     @State private var fridgeName: String = ""
     @State private var showQR: Bool = false
+    @State private var currentMessage: Message? = nil
     
     let context = CIContext()
     let filter = CIFilter.qrCodeGenerator()
-    
     
     var login: some View {
         VStack() {
@@ -55,69 +55,96 @@ struct ContentView: View {
     
     var QRModal: some View {
         VStack() {
-            Button {
-                showQR = false
-            } label: {
-                Text("Hide QR Code")
-            }
             Image(uiImage: generateQRCode(from: "SMSTO:+\(thisFridge!.fridgeNumber):JOIN \(thisFridge!.fridgeName) on shelf life!"))
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
                 .frame(width: 200, height: 200)
+            Button {
+                showQR = false
+            } label: {
+                Text("Hide QR Code")
+            }
+            .padding()
+            .background(RoundedRectangle(cornerRadius: 10).stroke(Color("AppBlack"), lineWidth: 3))
         }
         .padding()
+        .accentColor(Color("AppBlack"))
     }
-    
-    var shelf: some View {
+
+    var itemView: some View {
         VStack() {
-            Button {
-                showQR = true
-            } label: {
-                Text("Show QR Code")
-            }
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundColor(.accentColor)
-            Text("Hello, \(thisFridge!.fridgeName)!")
-            Button("Refresh", action: dataManager.fetchNewMessages)
-            
-            ScrollView(.horizontal) {
-                HStack() {
-                    ForEach(dataManager.messages, id: \.id) { message in
-                        Button {
-                            print("hi")
-                        } label: {
-                            Image("cup").resizable()
-                            if (message.senderName != nil) {
-                                Text(message.senderName!)
-                            }
-                        }
-                        .frame(width: 200.0, height: 200.0)
-                    }
+            let message = currentMessage!
+            HStack() {
+                Image(dataManager.getImageString(id: message.id, open: true))
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                if (message.senderName != nil) {
+                    Text(message.senderName!)
                 }
             }
-            //                if dataManager.messages.count > 0 {
-            //                    let message = dataManager.messages[0]
-            //                    WebView(url: URL(string: message.link)!)
-            //                        .border(.black)
-            //                }
-        }
-        .padding()
-        .onAppear {
-            dataManager.fetchNewMessages()
+            .frame(height: 100)
+            Text(message.note)
+            WebView(url: URL(string: message.link)!)
+                .border(.black)
+                .padding()
+            Button {
+                currentMessage = nil
+            } label: {
+                Text("Toss Out")
+            }
         }
     }
-    
+
     var body: some View {
-        if thisFridge == nil {
-            login
-        } else if thisFridge!.fridgeName.isEmpty {
-            chooseName
-        } else if showQR {
-            QRModal
-        } else {
-            shelf
+        ZStack {
+            Color("AppBackground").ignoresSafeArea()
+            if (currentMessage != nil) {
+                itemView
+            } else if thisFridge == nil {
+                login
+            } else if thisFridge!.fridgeName.isEmpty {
+                chooseName
+            } else if showQR {
+                QRModal
+            } else {
+                // Main screen
+                VStack(alignment: .leading) {
+                    HStack() {
+                        Text("\(thisFridge!.fridgeName) Shelf".uppercased())
+                            .foregroundColor(Color("AppBlack"))
+                            .font(.custom("Futura-CondensedExtraBold", size: 30))
+                        //                    Button {
+                        //                        dataManager.fetchNewMessages()
+                        //                    } label: {
+                        //                        Image(systemName: "arrow.clockwise.circle.fill")
+                        //                    }
+                        Button {
+                            showQR = true
+                        } label: {
+                            Image(systemName: "qrcode")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                            Text("Show QR Code")
+                        }
+                        .padding(.all, 5.0)
+                        .background(RoundedRectangle(cornerRadius: 10).stroke(Color("AppBlack"), lineWidth: 2))
+                        .accentColor(Color("AppBlack"))
+                        .padding(.leading)
+                    }
+                    let freshMessages = dataManager.messages.filter { Calendar.current.isDateInToday($0.createdAt) }
+                    let staleMessages = dataManager.messages.filter { !Calendar.current.isDateInToday($0.createdAt) }
+                    
+                    Image("fresh").resizable().aspectRatio(contentMode: .fit).frame(height:25)
+                    Shelf(messages: freshMessages, borderColor: Color("AppGreen"), currentMessage: $currentMessage)
+                    Image("stale").resizable().aspectRatio(contentMode: .fit).frame(height:25)
+                    Shelf(messages: staleMessages, borderColor: Color("AppOrange"), currentMessage: $currentMessage)
+                }
+                .padding()
+                .onAppear {
+                    dataManager.fetchNewMessages()
+                }
+            }
         }
     }
     
@@ -134,6 +161,52 @@ struct ContentView: View {
         }
         
         return UIImage(systemName: "xmark.circle") ?? UIImage()
+    }
+}
+
+struct Shelf: View {
+    let messages: [Message]
+    let borderColor: Color
+    @EnvironmentObject var dataManager: DataManager
+    @Binding var currentMessage: Message?
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack() {
+                ForEach(messages, id: \.id) { message in
+                    Button {
+                        currentMessage = message
+                    } label: {
+                        VStack() {
+                            Image(dataManager.getImageString(id: message.id, open: false))
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                            let formattedDate = message.createdAt.formatted(Date.FormatStyle()
+                                .month(.twoDigits)
+                                .day(.twoDigits)
+                            )
+                            TapeLabel(text: message.senderName != nil ? message.senderName! + " · " + formattedDate : "No name · " + formattedDate)
+                        }
+                    }
+                    .frame(width: 90, height: 90)
+                    .padding(5)
+                    .background(RoundedRectangle(cornerRadius: 10).stroke(borderColor, lineWidth: 2))
+                }
+            }
+            .frame(height: 100)
+            .padding(5)
+        }
+    }
+    
+}
+
+struct TapeLabel: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .foregroundColor(Color("AppBlack"))
+            .font(.system(size: 10))
+//            .padding()
     }
 }
 

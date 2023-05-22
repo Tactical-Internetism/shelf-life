@@ -13,6 +13,12 @@ import Foundation
     
     init() {
         loadThisFridge()
+        let messageChanges = supabaseRealtime.channel(.table("messages", schema: "public"))
+        messageChanges.on(.all) { message in
+            print("update")
+            self.fetchNewMessages()
+        }
+        messageChanges.subscribe()
     }
     
     func fetchNewMessages() {
@@ -119,5 +125,14 @@ import Foundation
                 print("### saveFridge Error: \(error)")
             }
         }
+    }
+    
+    func getImageString(id: UUID, open: Bool) -> String {
+        let hash = abs(id.uuidString.hashValue)
+        var imageString = String((hash % 5) + 1)
+        if (open) {
+            imageString.append("_open")
+        }
+        return imageString
     }
 }
