@@ -51,6 +51,7 @@ import Foundation
                 updatedMessage.isReadByFridge = true
                 updatedMessage.senderName = nil
                 try await supabase.database.from("messages").update(values: updatedMessage).eq(column: "id", value: message.id).execute()
+                fetchNewMessages()
             } catch {
                 print("### markMessageRead Error: \(error)")
             }
@@ -119,5 +120,14 @@ import Foundation
                 print("### saveFridge Error: \(error)")
             }
         }
+    }
+    
+    func getImageString(id: UUID, open: Bool) -> String {
+        let hash = abs(id.uuidString.hashValue)
+        var imageString = String((hash % 5) + 1)
+        if (open) {
+            imageString.append("_open")
+        }
+        return imageString
     }
 }
