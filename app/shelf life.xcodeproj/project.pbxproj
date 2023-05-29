@@ -21,7 +21,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		18D75EB42A19319600DF6F99 /* postcard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = postcard.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		18D75EB42A19319600DF6F99 /* shelf life.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "shelf life.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		18D75EB72A19319600DF6F99 /* postcardApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = postcardApp.swift; sourceTree = "<group>"; };
 		18D75EB92A19319600DF6F99 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		18D75EBB2A19319800DF6F99 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -58,7 +58,7 @@
 		18D75EB52A19319600DF6F99 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				18D75EB42A19319600DF6F99 /* postcard.app */,
+				18D75EB42A19319600DF6F99 /* shelf life.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -92,9 +92,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		18D75EB32A19319600DF6F99 /* postcard */ = {
+		18D75EB32A19319600DF6F99 /* shelf life */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 18D75EC22A19319800DF6F99 /* Build configuration list for PBXNativeTarget "postcard" */;
+			buildConfigurationList = 18D75EC22A19319800DF6F99 /* Build configuration list for PBXNativeTarget "shelf life" */;
 			buildPhases = (
 				18D75EB02A19319600DF6F99 /* Sources */,
 				18D75EB12A19319600DF6F99 /* Frameworks */,
@@ -104,12 +104,12 @@
 			);
 			dependencies = (
 			);
-			name = postcard;
+			name = "shelf life";
 			packageProductDependencies = (
 				18D75ECA2A1966D000DF6F99 /* Supabase */,
 			);
 			productName = postcard;
-			productReference = 18D75EB42A19319600DF6F99 /* postcard.app */;
+			productReference = 18D75EB42A19319600DF6F99 /* shelf life.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -127,7 +127,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 18D75EAF2A19319600DF6F99 /* Build configuration list for PBXProject "postcard" */;
+			buildConfigurationList = 18D75EAF2A19319600DF6F99 /* Build configuration list for PBXProject "shelf life" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -143,7 +143,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				18D75EB32A19319600DF6F99 /* postcard */,
+				18D75EB32A19319600DF6F99 /* shelf life */,
 			);
 		};
 /* End PBXProject section */
@@ -358,7 +358,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		18D75EAF2A19319600DF6F99 /* Build configuration list for PBXProject "postcard" */ = {
+		18D75EAF2A19319600DF6F99 /* Build configuration list for PBXProject "shelf life" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				18D75EC02A19319800DF6F99 /* Debug */,
@@ -367,7 +367,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		18D75EC22A19319800DF6F99 /* Build configuration list for PBXNativeTarget "postcard" */ = {
+		18D75EC22A19319800DF6F99 /* Build configuration list for PBXNativeTarget "shelf life" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				18D75EC32A19319800DF6F99 /* Debug */,
